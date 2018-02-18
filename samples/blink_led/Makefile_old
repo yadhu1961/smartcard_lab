@@ -1,0 +1,53 @@
+src=blink_led
+avrType=atmega644
+avrFreq=3276800 # 4MHz for accurate baudrate timing
+programmerType=avrispmkII
+
+cflags=-g -DF_CPU=$(avrFreq) -Wall -Os -Werror -Wextra
+
+.PHONY: clean disassemble dumpelf edit elf flash fuses help hex makefile object program
+
+help:
+	@echo 'backup       Read all known memory types from controller and write it into a file. Available memory types: $(memoryTypes)'
+	@echo 'clean        Delete automatically created files.'
+	@echo 'disassemble  Compile source code, then disassemble object file to mnemonics.'
+	@echo 'dumpelf      Dump the contents of the .elf file. Useful for information purposes only.'
+	@echo 'edit     Edit the .c source file.'
+	@echo 'eeprom       Extract EEPROM data from .elf file and program the device with it.'
+	@echo 'elf      Create $(src).elf'
+	@echo 'flash        Program $(src).hex to controller flash memory.'
+	@echo 'fuses        Extract FUSES data from .elf file and program the device with it.'
+	@echo 'help     Show this text.'
+	@echo 'hex      Create all hex files for flash, eeprom and fuses.'
+	@echo 'object       Create $(src).o'
+	@echo 'program      Do all programming to controller.'
+
+edit:
+	vi $(src).c
+
+makefile:
+	vi Makefile
+
+#all: object elf hex
+
+clean:
+	rm $(src).elf $(src).hex $(src).o
+	date
+
+object:
+	avr-gcc $(cflags) -mmcu=$(avrType) -Wa,-ahlmns=$(src).lst -c -o $(src).o $(src).c
+
+elf: object
+	avr-gcc $(cflags) -mmcu=$(avrType) -o $(src).elf $(src).o
+	chmod a-x $(src).elf 2>&1
+
+disassemble: elf
+	avr-objdump -C -d $(src).elf 2>&1
+
+dumpelf: elf
+	avr-objdump -s -h $(src).elf
+
+program: hex
+	#avrdude -p$(avrType) -c$(programmerType) -P$(programmerDev) -b$(baud) -v -U flash:w:$(src).flash.hex
+	avrdude -V -Pusb -B10 -c$(programmerType) -p$(avrType) -e -U flash:w:$(src).hex
+	date
